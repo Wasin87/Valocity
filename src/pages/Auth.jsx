@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
+import { Lock, Mail, User, ShieldCheck, ArrowRight, AlertCircle, LogOut } from 'lucide-react';
 import Logo from '../components/common/Logo';
 
 function formatAuthError(err) {
@@ -10,9 +10,13 @@ function formatAuthError(err) {
     case 'auth/unauthorized-domain':
       return `Domain "${window.location.hostname}" is not authorized in Firebase Console. Add it under Authentication → Settings → Authorized domains.`;
     case 'auth/popup-blocked':
-      return 'Popup was blocked by your browser. Please allow popups for this site and try again.';
+      return 'Popup was blocked by your browser. Please allow popups for this site or use full-page Google sign-in below.';
     case 'auth/popup-closed-by-user':
-      return `Google sign-in popup was closed. If it closed automatically, ensure "${window.location.hostname}" is added under Firebase Console → Authentication → Settings → Authorized domains.`;
+      return `Google sign-in popup was closed before completing. If you clicked Continue and it still failed, your browser may be blocking third-party storage/popups—try the full-page sign-in option below.`;
+    case 'auth/cancelled-popup-request':
+      return 'Another sign-in popup was already open. Please try again.';
+    case 'auth/web-storage-unsupported':
+      return 'Browser storage or third-party cookies are disabled. Enable cookies for sign-in or try a standard browser tab.';
     case 'auth/email-already-in-use':
       return 'An account with this email already exists. Please sign in instead.';
     case 'auth/invalid-credential':
@@ -31,7 +35,15 @@ function formatAuthError(err) {
 }
 
 export default function Auth({ onNavigate, setToast }) {
-  const { loginWithGoogle, loginWithEmail, registerWithEmail, user } = useAuth();
+  const {
+    loginWithGoogle,
+    loginWithGoogleRedirect,
+    loginWithEmail,
+    registerWithEmail,
+    logout,
+    user,
+    redirectError
+  } = useAuth();
   const { isDark } = useTheme();
 
   const [mode, setMode] = useState('login'); // 'login' | 'register'
@@ -39,7 +51,26 @@ export default function Auth({ onNavigate, setToast }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showRedirectFallback, setShowRedirectFallback] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const wasSignedInOnMount = useRef(Boolean(user));
+  const hasNavigatedRef = useRef(false);
+  const isTopLevel = typeof window !== 'undefined' && window.self === window.top;
+
+  useEffect(() => {
+    if (redirectError) {
+      setError(formatAuthError(redirectError));
+    }
+  }, [redirectError]);
+
+  useEffect(() => {
+    if (user && !wasSignedInOnMount.current && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
+      if (setToast) setToast({ message: 'Welcome to VELOCITY VIP', type: 'success' });
+      onNavigate('/dashboard');
+    }
+  }, [user, onNavigate, setToast]);
 
   if (user) {
     return (
@@ -47,9 +78,9 @@ export default function Auth({ onNavigate, setToast }) {
         isDark ? 'bg-[#0B0B0D] text-[#F5F4F0]' : 'bg-[#FFFFFF] text-[#121214]'
       }`}>
         <h2 className={`text-2xl font-bold font-display ${isDark ? 'text-white' : 'text-[#121214]'}`}>
-          Already Signed In as {user.displayName || user.email}
+          Signed In as {user.displayName || user.email}
         </h2>
-        <div className="flex justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-3 px-4">
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
@@ -66,6 +97,17 @@ export default function Auth({ onNavigate, setToast }) {
           >
             Go to Automotive Fleet
           </button>
+          <button
+            type="button"
+            onClick={async () => {
+              wasSignedInOnMount.current = false;
+              hasNavigatedRef.current = false;
+              await logout();
+            }}
+            className="px-5 py-2.5 border border-rose-500/35 text-rose-400 hover:bg-rose-500/10 font-bold text-xs uppercase rounded-xl cursor-pointer font-mono flex items-center gap-2"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Switch Account
+          </button>
         </div>
       </div>
     );
@@ -73,16 +115,35 @@ export default function Auth({ onNavigate, setToast }) {
 
   const handleGoogleLogin = async () => {
     setError('');
+    setShowRedirectFallback(false);
     setLoading(true);
     try {
       const signedInUser = await loginWithGoogle();
-      if (signedInUser) {
+      if (signedInUser && !hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
         if (setToast) setToast({ message: 'Welcome to VELOCITY VIP', type: 'success' });
         onNavigate('/dashboard');
       }
     } catch (err) {
       setError(formatAuthError(err));
+      if (
+        isTopLevel &&
+        ['auth/popup-closed-by-user', 'auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/internal-error'].includes(err?.code)
+      ) {
+        setShowRedirectFallback(true);
+      }
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleRedirectLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await loginWithGoogleRedirect();
+    } catch (err) {
+      setError(formatAuthError(err));
       setLoading(false);
     }
   };
@@ -103,7 +164,10 @@ export default function Auth({ onNavigate, setToast }) {
         await registerWithEmail(email, password, displayName);
         if (setToast) setToast({ message: 'Registration complete. Welcome!', type: 'success' });
       }
-      onNavigate('/dashboard');
+      if (!hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
+        onNavigate('/dashboard');
+      }
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -138,7 +202,7 @@ export default function Auth({ onNavigate, setToast }) {
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className={`w-full py-3 px-4 font-semibold text-xs rounded-xl flex items-center justify-center gap-3 shadow-sm transition-all cursor-pointer border ${
+            className={`w-full py-3 px-4 font-semibold text-xs rounded-xl flex items-center justify-center gap-3 shadow-sm transition-all cursor-pointer border disabled:opacity-60 ${
               isDark
                 ? 'bg-white hover:bg-neutral-100 text-[#0B0B0D] border-transparent'
                 : 'bg-white hover:bg-[#FAF3DF] text-[#121214] border-[#B8860B]/35'
@@ -150,8 +214,23 @@ export default function Auth({ onNavigate, setToast }) {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            Continue with Google Account
+            {loading ? 'Connecting to Google...' : 'Continue with Google Account'}
           </button>
+
+          {showRedirectFallback && isTopLevel && (
+            <button
+              type="button"
+              onClick={handleGoogleRedirectLogin}
+              disabled={loading}
+              className={`w-full py-2.5 px-4 text-[11px] font-mono uppercase tracking-wider rounded-xl border transition-all cursor-pointer ${
+                isDark
+                  ? 'border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10'
+                  : 'border-[#B8860B]/40 text-[#85570D] hover:bg-[#FAF3DF]'
+              }`}
+            >
+              Use Full-Page Google Sign-In Instead
+            </button>
+          )}
 
           <div className="flex items-center gap-3 text-xs font-mono text-[#A7A9AC]/70">
             <div className={`flex-1 h-px ${isDark ? 'bg-[#25252A]' : 'bg-[#B8860B]/20'}`} />

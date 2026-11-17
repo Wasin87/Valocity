@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getOrdersForUser } from '../services/marketplaceService';
-import { User, Package, Car, Clock, ShieldCheck, LogOut, ChevronRight, Award } from 'lucide-react';
+import { User, Package, Car, Clock, ShieldCheck, LogOut, ChevronRight, Award, AlertCircle } from 'lucide-react';
 
 export default function Dashboard({ onNavigate }) {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, loading: authLoading, profileSyncError, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
@@ -15,10 +15,21 @@ export default function Dashboard({ onNavigate }) {
         const list = await getOrdersForUser(user.uid);
         setOrders(list);
         setLoadingOrders(false);
+      } else {
+        setOrders([]);
+        setLoadingOrders(false);
       }
     }
     loadOrders();
   }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0B0B0D] text-[#A7A9AC] pt-36 pb-20 text-center font-mono text-xs animate-pulse">
+        Restoring VIP Collector Session...
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -38,6 +49,17 @@ export default function Dashboard({ onNavigate }) {
   return (
     <div className="min-h-screen bg-[#0B0B0D] text-[#F5F4F0] pt-28 pb-24 selection:bg-[#C5A878]/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        {profileSyncError && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Firestore Profile Sync Notice</p>
+              <p className="opacity-85 mt-0.5">
+                Signed in successfully, but your profile could not be saved to Firestore ({profileSyncError}). Please ensure the latest firestore.rules are published in Firebase Console.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Profile Card Header */}
         <div className="p-8 rounded-3xl bg-[#171719]/90 border border-[#242426] backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-6">
