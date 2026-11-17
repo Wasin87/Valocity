@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Registered customer or administrator profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "role": { "type": "string", "enum": ["customer", "admin"], "maxLength": 32 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Vehicle": {
+      "title": "Luxury Vehicle Listing",
+      "description": "Automotive listing details and technical specifications",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 128 },
+        "brand": { "type": "string", "maxLength": 64 },
+        "model": { "type": "string", "maxLength": 64 },
+        "year": { "type": "number" },
+        "category": { "type": "string", "enum": ["Supercar", "Sports", "Luxury Sedan", "SUV", "Electric", "Motorcycle"], "maxLength": 64 },
+        "price": { "type": "number" },
+        "mileage": { "type": "string", "maxLength": 64 },
+        "fuelType": { "type": "string", "enum": ["Petrol", "Diesel", "Electric", "Hybrid"], "maxLength": 32 },
+        "transmission": { "type": "string", "enum": ["Automatic", "Manual", "Dual-Clutch"], "maxLength": 32 },
+        "horsepower": { "type": "number" },
+        "topSpeed": { "type": "string", "maxLength": 32 },
+        "acceleration": { "type": "string", "maxLength": 32 },
+        "condition": { "type": "string", "enum": ["Brand New", "Certified Pre-Owned", "Mint Condition"], "maxLength": 64 },
+        "location": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "images": { "type": "array" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["title", "brand", "model", "price", "category"]
+    },
+    "Product": {
+      "title": "Technology Product",
+      "description": "Premium tech hardware, devices, and accessories",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 128 },
+        "brand": { "type": "string", "maxLength": 64 },
+        "category": { "type": "string", "enum": ["Smartphones", "Laptops", "Tablets", "Smartwatches", "Cameras", "Accessories"], "maxLength": 64 },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "stock": { "type": "number" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "description": { "type": "string", "maxLength": 2000 },
+        "images": { "type": "array" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["title", "brand", "category", "price", "stock"]
+    },
+    "Order": {
+      "title": "Customer Order",
+      "description": "Completed or active order record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "customerEmail": { "type": "string", "maxLength": 256 },
+        "customerPhone": { "type": "string", "maxLength": 32 },
+        "deliveryAddress": { "type": "string", "maxLength": 512 },
+        "city": { "type": "string", "maxLength": 64 },
+        "district": { "type": "string", "maxLength": 64 },
+        "paymentMethod": { "type": "string", "maxLength": 64 },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"], "maxLength": 32 },
+        "trackingId": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["customerName", "customerEmail", "items", "grandTotal", "status"]
+    },
+    "Inquiry": {
+      "title": "Vehicle Inquiry",
+      "description": "Customer inquiry regarding a vehicle listing",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "userPhone": { "type": "string", "maxLength": 32 },
+        "vehicleId": { "type": "string", "maxLength": 128 },
+        "vehicleTitle": { "type": "string", "maxLength": 128 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["New", "Contacted", "Resolved"], "maxLength": 32 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userName", "userEmail", "message"]
+    },
+    "TestDriveBooking": {
+      "title": "Test Drive Request",
+      "description": "Booking request for a vehicle test drive or inspection",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 256 },
+        "userPhone": { "type": "string", "maxLength": 32 },
+        "vehicleId": { "type": "string", "maxLength": 128 },
+        "vehicleTitle": { "type": "string", "maxLength": 128 },
+        "preferredDate": { "type": "string", "maxLength": 32 },
+        "preferredTime": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Completed", "Cancelled"], "maxLength": 32 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userName", "userEmail", "vehicleId", "preferredDate"]
+    },
+    "Coupon": {
+      "title": "Discount Coupon",
+      "description": "Marketplace promo code",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 32 },
+        "discountPercent": { "type": "number" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["code", "discountPercent"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile collection"
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": { "$ref": "#/entities/Vehicle" },
+      "description": "Automotive marketplace listings"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Technology products collection"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer order records"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "Vehicle customer inquiries"
+    },
+    "/testDriveBookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/TestDriveBooking" },
+      "description": "Test drive inspection bookings"
+    },
+    "/coupons/{couponId}": {
+      "schema": { "$ref": "#/entities/Coupon" },
+      "description": "Promotional discount codes"
+    }
+  }
+}

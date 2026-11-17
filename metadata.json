@@ -1,0 +1,6 @@
+{
+  "name": "VELOCITY - Premium Luxury Automotive & Technology Marketplace",
+  "description": "Experience the extraordinary with VELOCITY. Browse luxury supercars, sports cars, SUVs, EVs, and premier technology products.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

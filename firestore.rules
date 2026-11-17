@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        ((request.auth.token.email == "wasinahmed807@gmail.com" || request.auth.token.email == "wartechacademy800@gmail.com") && request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Collection (PII isolated to owner & admin; prevent self-assigned admin role)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && (
+        isAdmin() ||
+        (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'customer'))
+      );
+      allow update: if isValidId(userId) && (
+        isAdmin() ||
+        (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
+      );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // Vehicles Collection (Public Read, Admin Write)
+    match /vehicles/{vehicleId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(vehicleId) && isAdmin();
+    }
+
+    // Tech Products Collection (Public Read, Admin Write)
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(productId) && isAdmin();
+    }
+
+    // Orders Collection (Guest/User Create, Owner/Admin Read, Admin Update/Delete)
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(orderId)
+        && request.resource.data.keys().hasAll(['customerName', 'customerEmail', 'items', 'grandTotal', 'status'])
+        && request.resource.data.customerName is string && request.resource.data.customerName.size() <= 128
+        && request.resource.data.customerEmail is string && request.resource.data.customerEmail.size() <= 256
+        && request.resource.data.items is list && request.resource.data.items.size() <= 100
+        && request.resource.data.grandTotal is number
+        && request.resource.data.status == 'Confirmed';
+      allow update, delete: if isValidId(orderId) && isAdmin();
+    }
+
+    // Vehicle Inquiries
+    match /inquiries/{inquiryId} {
+      allow get: if isValidId(inquiryId) && (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(inquiryId)
+        && request.resource.data.keys().hasAll(['userName', 'userEmail', 'message'])
+        && request.resource.data.userName is string && request.resource.data.userName.size() <= 128
+        && request.resource.data.userEmail is string && request.resource.data.userEmail.size() <= 256
+        && request.resource.data.message is string && request.resource.data.message.size() <= 1000;
+      allow update, delete: if isValidId(inquiryId) && isAdmin();
+    }
+
+    // Test Drive Bookings
+    match /testDriveBookings/{bookingId} {
+      allow get: if isValidId(bookingId) && (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(bookingId)
+        && request.resource.data.keys().hasAll(['userName', 'userEmail', 'vehicleId', 'preferredDate'])
+        && request.resource.data.userName is string && request.resource.data.userName.size() <= 128
+        && request.resource.data.userEmail is string && request.resource.data.userEmail.size() <= 256
+        && request.resource.data.vehicleId is string && request.resource.data.vehicleId.size() <= 128
+        && request.resource.data.preferredDate is string && request.resource.data.preferredDate.size() <= 32;
+      allow update, delete: if isValidId(bookingId) && isAdmin();
+    }
+
+    // Coupons
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(couponId) && isAdmin();
+    }
+  }
+}
