@@ -12,7 +12,7 @@ function formatAuthError(err) {
     case 'auth/popup-blocked':
       return 'Popup was blocked by your browser. Please allow popups for this site and try again.';
     case 'auth/popup-closed-by-user':
-      return 'Google sign-in popup was closed before completing authentication.';
+      return `Google sign-in popup was closed. If it closed automatically, ensure "${window.location.hostname}" is added under Firebase Console → Authentication → Settings → Authorized domains.`;
     case 'auth/email-already-in-use':
       return 'An account with this email already exists. Please sign in instead.';
     case 'auth/invalid-credential':
@@ -75,9 +75,11 @@ export default function Auth({ onNavigate, setToast }) {
     setError('');
     setLoading(true);
     try {
-      await loginWithGoogle();
-      if (setToast) setToast({ message: 'Welcome to VELOCITY VIP', type: 'success' });
-      onNavigate('/dashboard');
+      const signedInUser = await loginWithGoogle();
+      if (signedInUser) {
+        if (setToast) setToast({ message: 'Welcome to VELOCITY VIP', type: 'success' });
+        onNavigate('/dashboard');
+      }
     } catch (err) {
       setError(formatAuthError(err));
     } finally {

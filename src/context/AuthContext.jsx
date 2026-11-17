@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -68,6 +70,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Complete any pending redirect sign-in on top-level deployments (e.g., Vercel mobile browsers)
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          const role = await syncUserDocument(result.user);
+          setUser(result.user);
+          setUserRole(role);
+        }
+      })
+      .catch((err) => {
+        console.warn('Redirect sign-in check:', err?.code || err?.message);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -84,13 +99,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   const loginWithGoogle = async () => {
-    const result = await signInWithPopup(auth, googleProvider);
-    if (result?.user) {
-      const role = await syncUserDocument(result.user);
-      setUser(result.user);
-      setUserRole(role);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result?.user) {
+        const role = await syncUserDocument(result.user);
+        setUser(result.user);
+        setUserRole(role);
+      }
+      return result.user;
+    } catch (err) {
+      // Only fall back to redirect when running top-level (e.g. Vercel) and popup is blocked
+      const isTopLevel = typeof window !== 'undefined' && window.self === window.top;
+      if (err?.code === 'auth/popup-blocked' && isTopLevel) {
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      }
+      throw err;
     }
-    return result.user;
   };
 
   const loginWithEmail = async (email, password) => {
